@@ -1,28 +1,28 @@
+use glow;
 use glow::HasContext;
 use imgui::*;
+use imgui_opengl;
 use imgui_winit_support;
 use std::time::Instant;
 use winit::{
-    dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::Window,
+    event_loop::{ControlFlow},
 };
-use imgui_opengl;
-use glow;
 
 fn main() {
     env_logger::init();
 
-    let (gl, event_loop, windowed_context, shader_version) = {
+    let (mut gl, event_loop, windowed_context, shader_version) = {
         let el = glutin::event_loop::EventLoop::new();
         let wb = glutin::window::WindowBuilder::new()
             .with_title("Hello")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let windowed_context = glutin::ContextBuilder::new()
             .with_vsync(true)
+            // .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGlEs, (3, 0)))
             .build_windowed(wb, &el)
             .unwrap();
+
         let windowed_context = unsafe { windowed_context.make_current().unwrap() };
         let context = glow::Context::from_loader_function(|s| {
             windowed_context.get_proc_address(s) as *const _
@@ -54,15 +54,15 @@ fn main() {
         }),
     }]);
 
-    let mut imgui_renderer = imgui_opengl::Renderer::new(&mut imgui, |s| {
-        windowed_context.get_proc_address(s) as *const _
-    });
-    
+    let imgui_renderer = imgui_opengl::Renderer::new(&mut imgui, &mut gl);
 
     let mut last_frame = Instant::now();
     let mut demo_open = true;
 
-    let mut size = windowed_context.window().inner_size().to_physical(hidpi_factor);
+    let mut size = windowed_context
+        .window()
+        .inner_size()
+        .to_physical(hidpi_factor);
 
     // Event loop
     event_loop.run(move |event, _, control_flow| {
@@ -105,15 +105,15 @@ fn main() {
                 last_frame = now;
 
                 unsafe {
-                    gl.clear_color(0.3f32,0.3f32,0.3f32,0.3f32);
+                    gl.viewport(0, 0, size.width as i32, size.height as i32);
+                    gl.scissor(0, 0, size.width as i32, size.height as i32);
+                    gl.clear_color(0.3f32, 0.3f32, 0.3f32, 0.3f32);
                     gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
                 }
 
-
-                // let frame = swap_chain.get_next_texture();
-                // imgui_winit_platform
-                //     .prepare_frame(imgui.io_mut(), &window)
-                //     .expect("Failed to prepare frame");
+                imgui_winit_platform
+                    .prepare_frame(imgui.io_mut(), &windowed_context.window())
+                    .expect("Failed to prepare frame");
                 let ui = imgui.frame();
 
                 {
@@ -143,12 +143,11 @@ fn main() {
                     ui.show_demo_window(&mut demo_open);
                 }
 
-                imgui_renderer.render(ui);
+                imgui_renderer.render(&mut gl, ui);
                 unsafe {
                     gl.flush();
                 }
                 windowed_context.swap_buffers().unwrap();
-
             }
             _ => (),
         }

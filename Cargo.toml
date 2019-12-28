@@ -3,7 +3,6 @@ name = "imgui-opengl"
 description = "An OpenGL renderer for imgui-rs"
 version = "0.6.1"
 authors = ["Michael Fairley <michael@michaelfairley.com>"]
-build = "build.rs"
 homepage = "https://github.com/michaelfairley/rust-imgui-opengl-renderer"
 repository = "https://github.com/michaelfairley/rust-imgui-opengl-renderer"
 readme = "README.md"
@@ -18,17 +17,12 @@ travis-ci = { repository = "michaelfairley/rust-imgui-opengl" }
 [features]
 default = []
 
-
 [dependencies]
 imgui = "0.2"
+glow = {version = "0.4", features = ["web-sys"] }
 
 [dev-dependencies]
 winit = "0.20.0-alpha4"
-raw-window-handle = "0.3"
 env_logger = "0.7.1"
 imgui-winit-support = { version = "0.2.1", default-features = false, features = ["winit-20"] }
-glow = {version = "0.4", features = ["glutin"] }
 glutin = "0.22.0-alpha4"
-
-[build-dependencies]
-gl_generator = "0.9.0"
