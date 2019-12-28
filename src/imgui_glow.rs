@@ -34,33 +34,32 @@ impl Renderer {
             let (vertex_shader_source, fragment_shader_source) = (
 				r#"
 					uniform mat4 ProjMtx;
-					in vec2 Position;
-					in vec2 UV;
-					in vec4 Color;
-					out vec2 Frag_UV;
-					out vec4 Frag_Color;
+					attribute mediump vec2 Position;
+					attribute mediump vec2 UV;
+					attribute mediump vec4 Color;
+					varying mediump vec2 Frag_UV;
+					varying mediump vec4 Frag_Color;
 					
 					void main()
 					{
 						Frag_UV = UV;
 						Frag_Color = Color;
-						gl_Position = ProjMtx * vec4(Position.xy,0,1);
+						gl_Position = ProjMtx * vec4(Position.xy, 0.0, 1.0);
 					}
 				"#,
 				r#"
-					uniform sampler2D Texture;
-					in vec2 Frag_UV;
-					in vec4 Frag_Color;
-					out vec4 Out_Color;
+					uniform mediump sampler2D Texture;
+					varying mediump vec2 Frag_UV;
+					varying mediump vec4 Frag_Color;
 
 					void main()
 					{
-						Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+						gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV.st);
 					}
 				"#,
             );
 
-            let shader_version = "#version 130";
+			let shader_version = "#version 100";
 
             let shader_sources = [
                 (glow::VERTEX_SHADER, vertex_shader_source),

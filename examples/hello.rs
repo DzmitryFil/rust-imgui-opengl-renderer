@@ -12,14 +12,14 @@ use winit::{
 fn main() {
     env_logger::init();
 
-    let (mut gl, event_loop, windowed_context, shader_version) = {
+    let (mut gl, event_loop, windowed_context) = {
         let el = glutin::event_loop::EventLoop::new();
         let wb = glutin::window::WindowBuilder::new()
             .with_title("Hello")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let windowed_context = glutin::ContextBuilder::new()
             .with_vsync(true)
-            // .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGlEs, (3, 0)))
+            .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGlEs, (2, 0)))
             .build_windowed(wb, &el)
             .unwrap();
 
@@ -27,7 +27,7 @@ fn main() {
         let context = glow::Context::from_loader_function(|s| {
             windowed_context.get_proc_address(s) as *const _
         });
-        (context, el, windowed_context, "#version 410")
+        (context, el, windowed_context)
     };
 
     // Set up dear imgui
