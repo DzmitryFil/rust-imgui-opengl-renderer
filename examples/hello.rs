@@ -7,12 +7,13 @@ use std::time::Instant;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow},
+    dpi::PhysicalSize,
 };
 
 fn main() {
     env_logger::init();
 
-    let (mut gl, event_loop, windowed_context) = {
+    let (mut gl, window, event_loop, resize_func, swap_func) = {
         let el = glutin::event_loop::EventLoop::new();
         let wb = glutin::window::WindowBuilder::new()
             .with_title("Hello")
@@ -24,10 +25,24 @@ fn main() {
             .unwrap();
 
         let windowed_context = unsafe { windowed_context.make_current().unwrap() };
+
+        let (context_wrapper, window) = unsafe { windowed_context.split() };
+
+        let context_wrapper = std::rc::Rc::new(context_wrapper);
+
         let context = glow::Context::from_loader_function(|s| {
-            windowed_context.get_proc_address(s) as *const _
+            context_wrapper.get_proc_address(s) as *const _
         });
-        (context, el, windowed_context)
+
+        let resize_func = {
+            let context = context_wrapper.clone();
+            move |size:PhysicalSize| context.resize(size)
+        };
+        let swap_func = {
+            let context = context_wrapper.clone();
+            move || context.swap_buffers()
+        };
+        (context, window, el, resize_func, swap_func)
     };
 
     // Set up dear imgui
@@ -35,12 +50,12 @@ fn main() {
     let mut imgui_winit_platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
     imgui_winit_platform.attach_window(
         imgui.io_mut(),
-        windowed_context.window(),
+        &window,
         imgui_winit_support::HiDpiMode::Default,
     );
     imgui.set_ini_filename(None);
 
-    let hidpi_factor = windowed_context.window().hidpi_factor();
+    let hidpi_factor = window.hidpi_factor();
 
     let font_size = (13.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
@@ -59,10 +74,7 @@ fn main() {
     let mut last_frame = Instant::now();
     let mut demo_open = true;
 
-    let mut size = windowed_context
-        .window()
-        .inner_size()
-        .to_physical(hidpi_factor);
+    let mut size = window.inner_size().to_physical(hidpi_factor);
 
     // Event loop
     event_loop.run(move |event, _, control_flow| {
@@ -77,7 +89,7 @@ fn main() {
                 ..
             } => {
                 size = new_size.to_physical(hidpi_factor);
-                windowed_context.resize(size);
+                resize_func(size);
             }
             Event::WindowEvent {
                 event:
@@ -112,7 +124,7 @@ fn main() {
                 }
 
                 imgui_winit_platform
-                    .prepare_frame(imgui.io_mut(), &windowed_context.window())
+                    .prepare_frame(imgui.io_mut(), &window)
                     .expect("Failed to prepare frame");
                 let ui = imgui.frame();
 
@@ -147,11 +159,11 @@ fn main() {
                 unsafe {
                     gl.flush();
                 }
-                windowed_context.swap_buffers().unwrap();
+                swap_func();
             }
             _ => (),
         }
 
-        imgui_winit_platform.handle_event(imgui.io_mut(), windowed_context.window(), &event);
+        imgui_winit_platform.handle_event(imgui.io_mut(), &window, &event);
     });
 }
