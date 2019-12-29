@@ -28,12 +28,18 @@ fn main() {
 
         let (context_wrapper, window) = unsafe { windowed_context.split() };
 
-        let context_wrapper = std::rc::Rc::new(context_wrapper);
+        let context_wrapper = std::rc::Rc::new(context_wrapper.treat_as_not_current());
 
-        let context = glow::Context::from_loader_function(|s| {
-            context_wrapper.get_proc_address(s) as *const _
-        });
+        let create_glow_func = {
+            let context = context_wrapper.clone();
 
+            return move || {
+                let current = context.make_current();
+                glow::Context::from_loader_function(|s| {
+                    current.get_proc_address(s) as *const _
+            })}
+        }
+        
         let resize_func = {
             let context = context_wrapper.clone();
             move |size:PhysicalSize| context.resize(size)
